@@ -87,3 +87,173 @@
                   </div>
                 </li>
               </ul>
+
+            </div>
+        </div>
+        
+        <div class="relative" ref="userMenu">
+          <button
+            class="flex items-center space-x-2 text-sm"
+            @click="toggleUserMenu"
+          >
+            <div class="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
+              {{ userInitials }}
+            </div>
+            <span class="hidden md:inline-block font-medium">{{ userName }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div
+            v-if="isUserMenuOpen"
+            class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
+          >
+            <router-link
+              to="/settings"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              @click="isUserMenuOpen = false"
+            >
+              Settings
+            </router-link>
+            <button
+              class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              @click="logout"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
+
+// User menu state
+const isUserMenuOpen = ref(false)
+const userMenu = ref(null)
+
+// Notifications state
+const isNotificationsOpen = ref(false)
+const notificationMenu = ref(null)
+const notifications = ref([
+  {
+    id: 1,
+    title: 'Appointment Reminder',
+    message: 'You have 5 appointments scheduled for today',
+    time: 'Just now',
+    read: false
+  },
+  {
+    id: 2,
+    title: 'New Patient',
+    message: 'John Doe has been added as a new patient',
+    time: '2 hours ago',
+    read: false
+  }
+])
+
+// Search state
+const searchQuery = ref('')
+const isSearchVisible = computed(() => {
+  return ['Patients', 'Appointments'].includes(route.name)
+})
+
+// Computed properties
+const userName = computed(() => {
+  return authStore.user?.email?.split('@')[0] || 'User'
+})
+
+const userInitials = computed(() => {
+  const name = userName.value
+  return name.charAt(0).toUpperCase()
+})
+
+const unreadNotifications = computed(() => {
+  return notifications.value.filter(n => !n.read).length
+})
+
+// Methods
+function toggleUserMenu() {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+  isNotificationsOpen.value = false
+}
+
+function toggleNotifications() {
+  isNotificationsOpen.value = !isNotificationsOpen.value
+  isUserMenuOpen.value = false
+}
+
+function markAllAsRead() {
+  notifications.value = notifications.value.map(n => ({
+    ...n,
+    read: true
+  }))
+}
+
+function removeNotification(id) {
+  notifications.value = notifications.value.filter(n => n.id !== id)
+}
+
+function handleSearch() {
+  if (searchQuery.value.trim()) {
+    if (route.name === 'Patients') {
+      router.push({ 
+        name: 'Patients', 
+        query: { search: searchQuery.value } 
+      })
+    } else if (route.name === 'Appointments') {
+      router.push({ 
+        name: 'Appointments', 
+        query: { search: searchQuery.value } 
+      })
+    }
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  if (route.query.search) {
+    router.push({ 
+      name: route.name
+    })
+  }
+}
+
+async function logout() {
+  try {
+    await authStore.logout()
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
+}
+
+// Close menus when clicking outside
+function handleClickOutside(event) {
+  if (userMenu.value && !userMenu.value.contains(event.target)) {
+    isUserMenuOpen.value = false
+  }
+  
+  if (notificationMenu.value && !notificationMenu.value.contains(event.target)) {
+    isNotificationsOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+</script>
