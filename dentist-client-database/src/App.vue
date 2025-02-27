@@ -12,7 +12,6 @@
   const route = useRoute()
   
   const layout = computed(() => {
-    // Get layout from route meta or fallback to default
     return route.meta.layout || DefaultLayout
   })
   </script>
